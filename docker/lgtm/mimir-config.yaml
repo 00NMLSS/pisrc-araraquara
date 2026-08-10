@@ -14,12 +14,6 @@ ingester:
       store: inmemory
     replication_factor: 1
 
-ruler:
-  rule_store:
-    type: filesystem
-    filesystem:
-      dir: /tmp/mimir/rules
-
 store_gateway:
   sharding_ring:
     replication_factor: 1

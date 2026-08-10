@@ -4,6 +4,7 @@ services:
   nginx:
     image: nginx:1.25-alpine
     container_name: quintadinha-nginx
+    restart: unless-stopped
     ports:
       - "80:80"
     volumes:
@@ -17,6 +18,7 @@ services:
       context: ./frontend
       dockerfile: Dockerfile
     container_name: quintadinha-frontend
+    restart: unless-stopped
     ports:
       - "3000:3000"
     environment:
@@ -27,6 +29,7 @@ services:
       context: ./services/bff-gateway
       dockerfile: Dockerfile
     container_name: quintadinha-bff-gateway
+    restart: unless-stopped
     ports:
       - "8080:8080"
     environment:
@@ -49,6 +52,7 @@ services:
       context: ./services/auth-service
       dockerfile: Dockerfile.native
     container_name: quintadinha-auth-service
+    restart: unless-stopped
     ports:
       - "8081:8081"
     environment:
@@ -68,6 +72,7 @@ services:
       context: ./services/catalog-service
       dockerfile: Dockerfile.native
     container_name: quintadinha-catalog-service
+    restart: unless-stopped
     ports:
       - "8082:8082"
     environment:
@@ -89,6 +94,7 @@ services:
       context: ./services/order-service
       dockerfile: Dockerfile.native
     container_name: quintadinha-order-service
+    restart: unless-stopped
     ports:
       - "8083:8083"
     environment:
@@ -106,6 +112,7 @@ services:
   postgres-primary:
     image: postgres:16-alpine
     container_name: quintadinha-postgres-primary
+    restart: unless-stopped
     environment:
       - POSTGRES_DB=quintadinha
       - POSTGRES_USER=quintadinha
@@ -119,6 +126,7 @@ services:
   postgres-replica:
     image: postgres:16-alpine
     container_name: quintadinha-postgres-replica
+    restart: unless-stopped
     environment:
       - POSTGRES_DB=quintadinha
       - POSTGRES_USER=quintadinha
@@ -133,6 +141,7 @@ services:
   pgbouncer:
     image: edoburu/pgbouncer:latest
     container_name: quintadinha-pgbouncer
+    restart: unless-stopped
     ports:
       - "6432:6432"
     volumes:
@@ -144,6 +153,7 @@ services:
   redis:
     image: redis:7-alpine
     container_name: quintadinha-redis
+    restart: unless-stopped
     command: ["redis-server", "/usr/local/etc/redis/redis.conf"]
     ports:
       - "6379:6379"
@@ -154,6 +164,7 @@ services:
   elasticsearch:
     image: docker.elastic.co/elasticsearch/elasticsearch:8.12.0
     container_name: quintadinha-elasticsearch
+    restart: unless-stopped
     environment:
       - discovery.type=single-node
       - xpack.security.enabled=false
@@ -166,6 +177,7 @@ services:
   rabbitmq:
     image: rabbitmq:3.12-management-alpine
     container_name: quintadinha-rabbitmq
+    restart: unless-stopped
     ports:
       - "5672:5672"
       - "15672:15672"
@@ -178,6 +190,7 @@ services:
   otel-collector:
     image: otel/opentelemetry-collector-contrib:0.95.0
     container_name: quintadinha-otel-collector
+    restart: unless-stopped
     command: ["--config=/etc/otel-collector-config.yaml"]
     volumes:
       - ./docker/otel/otel-collector-config.yaml:/etc/otel-collector-config.yaml:ro
@@ -189,6 +202,7 @@ services:
   loki:
     image: grafana/loki:2.9.4
     container_name: quintadinha-loki
+    restart: unless-stopped
     command: ["-config.file=/etc/loki/local-config.yaml"]
     volumes:
       - ./docker/lgtm/loki-config.yaml:/etc/loki/local-config.yaml:ro
@@ -198,6 +212,7 @@ services:
   tempo:
     image: grafana/tempo:2.3.1
     container_name: quintadinha-tempo
+    restart: unless-stopped
     command: ["-config.file=/etc/tempo.yaml"]
     volumes:
       - ./docker/lgtm/tempo-config.yaml:/etc/tempo.yaml:ro
@@ -207,6 +222,7 @@ services:
   mimir:
     image: grafana/mimir:2.11.0
     container_name: quintadinha-mimir
+    restart: unless-stopped
     command: ["-config.file=/etc/mimir.yaml"]
     volumes:
       - ./docker/lgtm/mimir-config.yaml:/etc/mimir.yaml:ro
@@ -216,6 +232,7 @@ services:
   grafana:
     image: grafana/grafana:10.3.3
     container_name: quintadinha-grafana
+    restart: unless-stopped
     ports:
       - "3001:3000"
     volumes:
@@ -226,6 +243,7 @@ services:
   wazuh:
     image: wazuh/wazuh-manager:4.7.2
     container_name: quintadinha-wazuh
+    restart: unless-stopped
     ports:
       - "1514:1514"
       - "55000:55000"

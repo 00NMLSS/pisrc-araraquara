@@ -1,102 +1,122 @@
 package com.quintadinha.catalog.controller;
 
+import com.quintadinha.catalog.model.InventoryMovement;
+import com.quintadinha.catalog.model.Product;
+import com.quintadinha.catalog.repository.InventoryMovementRepository;
+import com.quintadinha.catalog.repository.ProductRepository;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+
+import java.time.ZonedDateTime;
 import java.util.List;
 import java.util.Map;
+import java.util.UUID;
 
 @RestController
 @RequestMapping("/products")
 public class ProductController {
 
-    private final List<Map<String, Object>> mockProducts = List.of(
-        Map.of(
-            "id", "p1111111-1111-1111-1111-111111111111",
-            "name", "Maçã Fuji Orgânica",
-            "slug", "maca-fuji-organica",
-            "description", "Maçãs doces e suculentas produtoras locais.",
-            "price", 8.90,
-            "unit", "kg",
-            "stockQuantity", 150,
-            "isOrganic", true,
-            "categoryId", "c1111111-1111-1111-1111-111111111111"
-        ),
-        Map.of(
-            "id", "p2222222-2222-2222-2222-222222222222",
-            "name", "Banana Prata Orgânica",
-            "slug", "banana-prata-organica",
-            "description", "Bananas ricas em potássio e sem agrotóxicos.",
-            "price", 6.50,
-            "unit", "kg",
-            "stockQuantity", 200,
-            "isOrganic", true,
-            "categoryId", "c1111111-1111-1111-1111-111111111111"
-        ),
-        Map.of(
-            "id", "p3333333-3333-3333-3333-333333333333",
-            "name", "Alface Crespa Orgânica",
-            "slug", "alface-crespa-organica",
-            "description", "Maço de alface fresca colhida no dia.",
-            "price", 3.90,
-            "unit", "maço",
-            "stockQuantity", 80,
-            "isOrganic", true,
-            "categoryId", "c2222222-2222-2222-2222-222222222222"
-        ),
-        Map.of(
-            "id", "p4444444-4444-4444-4444-444444444444",
-            "name", "Tomate Italiano Orgânico",
-            "slug", "tomate-italiano-organico",
-            "description", "Tomates maduros ideais para saladas e molhos.",
-            "price", 9.80,
-            "unit", "kg",
-            "stockQuantity", 120,
-            "isOrganic", true,
-            "categoryId", "c3333333-3333-3333-3333-333333333333"
-        ),
-        Map.of(
-            "id", "p5555555-5555-5555-5555-555555555555",
-            "name", "Cenoura Orgânica",
-            "slug", "cenoura-organica",
-            "description", "Cenouras crocantes e selecionadas.",
-            "price", 5.40,
-            "unit", "kg",
-            "stockQuantity", 100,
-            "isOrganic", true,
-            "categoryId", "c3333333-3333-3333-3333-333333333333"
-        ),
-        Map.of(
-            "id", "p6666666-6666-6666-6666-666666666666",
-            "name", "Manjericão Fresco",
-            "slug", "manjericao-fresco",
-            "description", "Erva aromática para seus pratos.",
-            "price", 4.20,
-            "unit", "maço",
-            "stockQuantity", 50,
-            "isOrganic", true,
-            "categoryId", "c4444444-4444-4444-4444-444444444444"
-        )
-    );
+    private final ProductRepository productRepository;
+    private final InventoryMovementRepository movementRepository;
+
+    public ProductController(ProductRepository productRepository, InventoryMovementRepository movementRepository) {
+        this.productRepository = productRepository;
+        this.movementRepository = movementRepository;
+    }
 
     @GetMapping
-    public ResponseEntity<List<Map<String, Object>>> getProducts(
+    public ResponseEntity<List<Product>> getProducts(
             @RequestParam(required = false) String search,
-            @RequestParam(required = false) String categoryId) {
+            @RequestParam(required = false) UUID categoryId) {
         
-        List<Map<String, Object>> filtered = mockProducts.stream()
-            .filter(p -> categoryId == null || categoryId.equals(p.get("categoryId")))
-            .filter(p -> search == null || ((String) p.get("name")).toLowerCase().contains(search.toLowerCase()))
-            .toList();
+        List<Product> products;
+        if (search != null && !search.isBlank()) {
+            products = productRepository.findByNameContainingIgnoreCase(search);
+        } else {
+            products = productRepository.findAll();
+        }
 
-        return ResponseEntity.ok(filtered);
+        if (categoryId != null) {
+            products = products.stream()
+                .filter(p -> categoryId.equals(p.getCategoryId()))
+                .toList();
+        }
+
+        return ResponseEntity.ok(products);
     }
 
     @GetMapping("/{id}")
-    public ResponseEntity<?> getProductById(@PathVariable String id) {
-        return mockProducts.stream()
-            .filter(p -> p.get("id").equals(id))
-            .findFirst()
-            .<ResponseEntity<?>>map(ResponseEntity::ok)
+    public ResponseEntity<Product> getProductById(@PathVariable UUID id) {
+        return productRepository.findById(id)
+            .map(ResponseEntity::ok)
             .orElseGet(() -> ResponseEntity.notFound().build());
+    }
+
+    @PostMapping
+    public ResponseEntity<Product> createProduct(@RequestBody Product product) {
+        if (product.getSlug() == null || product.getSlug().isBlank()) {
+            product.setSlug(product.getName().toLowerCase().replaceAll("[^a-z0-9]", "-"));
+        }
+        Product saved = productRepository.save(product);
+
+        if (product.getStockQuantity() != null && product.getStockQuantity() > 0) {
+            InventoryMovement movement = new InventoryMovement();
+            movement.setProductId(saved.getId());
+            movement.setMovementType("IN");
+            movement.setQuantity(product.getStockQuantity());
+            movement.setPreviousStock(0);
+            movement.setNewStock(product.getStockQuantity());
+            movement.setNotes("Estoque inicial no cadastro");
+            movementRepository.save(movement);
+        }
+
+        return ResponseEntity.ok(saved);
+    }
+
+    @PutMapping("/{id}")
+    public ResponseEntity<Product> updateProduct(@PathVariable UUID id, @RequestBody Product payload) {
+        return productRepository.findById(id).map(existing -> {
+            existing.setName(payload.getName());
+            existing.setDescription(payload.getDescription());
+            existing.setPrice(payload.getPrice());
+            existing.setUnit(payload.getUnit());
+            existing.setIsOrganic(payload.getIsOrganic());
+            existing.setCategoryId(payload.getCategoryId());
+            if (payload.getSlug() != null) existing.setSlug(payload.getSlug());
+            Product updated = productRepository.save(existing);
+            return ResponseEntity.ok(updated);
+        }).orElseGet(() -> ResponseEntity.notFound().build());
+    }
+
+    @PutMapping("/{id}/stock")
+    public ResponseEntity<Product> updateStock(
+            @PathVariable UUID id,
+            @RequestBody Map<String, Object> payload) {
+        
+        Integer targetStock = (Integer) payload.get("stockQuantity");
+        String notes = (String) payload.getOrDefault("notes", "Ajuste manual via Painel Admin");
+
+        if (targetStock == null || targetStock < 0) {
+            return ResponseEntity.badRequest().build();
+        }
+
+        return productRepository.findById(id).map(product -> {
+            int previous = product.getStockQuantity();
+            int diff = targetStock - previous;
+
+            product.setStockQuantity(targetStock);
+            Product saved = productRepository.save(product);
+
+            InventoryMovement movement = new InventoryMovement();
+            movement.setProductId(saved.getId());
+            movement.setMovementType(diff >= 0 ? "IN" : "OUT");
+            movement.setQuantity(Math.abs(diff));
+            movement.setPreviousStock(previous);
+            movement.setNewStock(targetStock);
+            movement.setNotes(notes);
+            movementRepository.save(movement);
+
+            return ResponseEntity.ok(saved);
+        }).orElseGet(() -> ResponseEntity.notFound().build());
     }
 }

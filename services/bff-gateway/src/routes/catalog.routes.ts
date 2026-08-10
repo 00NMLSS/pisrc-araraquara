@@ -25,6 +25,46 @@ export async function catalogRoutes(fastify: FastifyInstance) {
     }
   });
 
+  fastify.post('/products', async (request: any, reply) => {
+    try {
+      const response = await axios.post(`${CATALOG_SERVICE_URL}/products`, request.body);
+      return reply.status(response.status).send(response.data);
+    } catch (error: any) {
+      const status = error.response?.status || 500;
+      return reply.status(status).send(error.response?.data || { error: 'Failed to create product' });
+    }
+  });
+
+  fastify.put('/products/:id', async (request: any, reply) => {
+    try {
+      const response = await axios.put(`${CATALOG_SERVICE_URL}/products/${request.params.id}`, request.body);
+      return reply.status(response.status).send(response.data);
+    } catch (error: any) {
+      const status = error.response?.status || 500;
+      return reply.status(status).send(error.response?.data || { error: 'Failed to update product' });
+    }
+  });
+
+  fastify.put('/products/:id/stock', async (request: any, reply) => {
+    try {
+      const response = await axios.put(`${CATALOG_SERVICE_URL}/products/${request.params.id}/stock`, request.body);
+      return reply.status(response.status).send(response.data);
+    } catch (error: any) {
+      const status = error.response?.status || 500;
+      return reply.status(status).send(error.response?.data || { error: 'Failed to update stock' });
+    }
+  });
+
+  fastify.get('/inventory/movements', async (request, reply) => {
+    try {
+      const response = await axios.get(`${CATALOG_SERVICE_URL}/inventory/movements`);
+      return reply.status(response.status).send(response.data);
+    } catch (error: any) {
+      const status = error.response?.status || 500;
+      return reply.status(status).send(error.response?.data || { error: 'Failed to fetch inventory movements' });
+    }
+  });
+
   fastify.get('/categories', async (request, reply) => {
     try {
       const response = await axios.get(`${CATALOG_SERVICE_URL}/categories`);
@@ -37,9 +77,7 @@ export async function catalogRoutes(fastify: FastifyInstance) {
 
   fastify.get('/search', async (request: any, reply) => {
     const { q } = request.query;
-    if (!q) {
-      return reply.send([]);
-    }
+    if (!q) return reply.send([]);
 
     try {
       const esResponse = await axios.post(`${ELASTICSEARCH_URL}/products/_search`, {
@@ -51,10 +89,8 @@ export async function catalogRoutes(fastify: FastifyInstance) {
           }
         }
       });
-
       const hits = esResponse.data.hits?.hits || [];
-      const results = hits.map((hit: any) => hit._source);
-      return reply.send(results);
+      return reply.send(hits.map((hit: any) => hit._source));
     } catch (error) {
       const fallbackResponse = await axios.get(`${CATALOG_SERVICE_URL}/products`, { params: { search: q } });
       return reply.send(fallbackResponse.data);

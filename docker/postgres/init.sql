@@ -45,7 +45,21 @@ CREATE TABLE products (
     unit VARCHAR(50) NOT NULL DEFAULT 'kg',
     stock_quantity INT NOT NULL DEFAULT 0,
     is_organic BOOLEAN DEFAULT FALSE,
+    is_active BOOLEAN DEFAULT TRUE,
     image_url TEXT,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Inventory Movements Table (Audit log for stock adjustments)
+CREATE TABLE inventory_movements (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    product_id UUID NOT NULL REFERENCES products(id) ON DELETE CASCADE,
+    movement_type VARCHAR(50) NOT NULL,
+    quantity INT NOT NULL,
+    previous_stock INT NOT NULL,
+    new_stock INT NOT NULL,
+    notes TEXT,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
 
@@ -76,18 +90,23 @@ CREATE TABLE order_items (
     unit_price DECIMAL(10, 2) NOT NULL
 );
 
--- Initial Categories Seed Data
+-- Seed Admin & Customer Users
+INSERT INTO users (id, email, password_hash, full_name, role) VALUES
+('a0000000-0000-0000-0000-000000000000', 'admin@quintadinha.com', '$2a$10$hashed_admin_pass', 'Administrador Quintadinha', 'ADMIN'),
+('u0000000-0000-0000-0000-000000000000', 'cliente@quintadinha.com', '$2a$10$hashed_client_pass', 'Maria Silva', 'CUSTOMER');
+
+-- Seed Categories Data
 INSERT INTO categories (id, name, slug, description) VALUES
 ('c1111111-1111-1111-1111-111111111111', 'Frutas Frescas', 'frutas', 'Frutas colhidas no ponto certo de maturação'),
 ('c2222222-2222-2222-2222-222222222222', 'Verduras e Folhas', 'verduras', 'Verduras orgânicas e crocantes'),
 ('c3333333-3333-3333-3333-333333333333', 'Legumes e Tubérculos', 'legumes', 'Legumes selecionados para sua mesa'),
 ('c4444444-4444-4444-4444-444444444444', 'Temperos e Ervas', 'temperos', 'Ervas aromáticas para dar sabor especial');
 
--- Initial Products Seed Data
+-- Initial Seed Products (Stock = 0 / Unavailable until Admin Stock Entry)
 INSERT INTO products (id, category_id, name, slug, description, price, unit, stock_quantity, is_organic, image_url) VALUES
-('p1111111-1111-1111-1111-111111111111', 'c1111111-1111-1111-1111-111111111111', 'Maçã Fuji Orgânica', 'maca-fuji-organica', 'Maçãs doces e suculentas produtoras locais.', 8.90, 'kg', 150, true, '/images/maca.jpg'),
-('p2222222-2222-2222-2222-222222222222', 'c1111111-1111-1111-1111-111111111111', 'Banana Prata Orgânica', 'banana-prata-organica', 'Bananas ricas em potássio e sem agrotóxicos.', 6.50, 'kg', 200, true, '/images/banana.jpg'),
-('p3333333-3333-3333-3333-333333333333', 'c2222222-2222-2222-2222-222222222222', 'Alface Crespa Orgânica', 'alface-crespa-organica', 'Maço de alface fresca colhida no dia.', 3.90, 'maço', 80, true, '/images/alface.jpg'),
-('p4444444-4444-4444-4444-444444444444', 'c3333333-3333-3333-3333-333333333333', 'Tomate Italiano Orgânico', 'tomate-italiano-organico', 'Tomates maduros ideais para saladas e molhos.', 9.80, 'kg', 120, true, '/images/tomate.jpg'),
-('p5555555-5555-5555-5555-555555555555', 'c3333333-3333-3333-3333-333333333333', 'Cenoura Orgânica', 'cenoura-organica', 'Cenouras crocantes e selecionadas.', 5.40, 'kg', 100, true, '/images/cenoura.jpg'),
-('p6666666-6666-6666-6666-666666666666', 'c4444444-4444-4444-4444-444444444444', 'Manjericão Fresco', 'manjericao-fresco', 'Erva aromática para seus pratos.', 4.20, 'maço', 50, true, '/images/manjericao.jpg');
+('p1111111-1111-1111-1111-111111111111', 'c1111111-1111-1111-1111-111111111111', 'Maçã Fuji Orgânica', 'maca-fuji-organica', 'Maçãs doces e suculentas produtoras locais.', 8.90, 'kg', 0, true, '/images/maca.jpg'),
+('p2222222-2222-2222-2222-222222222222', 'c1111111-1111-1111-1111-111111111111', 'Banana Prata Orgânica', 'banana-prata-organica', 'Bananas ricas em potássio e sem agrotóxicos.', 6.50, 'kg', 0, true, '/images/banana.jpg'),
+('p3333333-3333-3333-3333-333333333333', 'c2222222-2222-2222-2222-222222222222', 'Alface Crespa Orgânica', 'alface-crespa-organica', 'Maço de alface fresca colhida no dia.', 3.90, 'maço', 0, true, '/images/alface.jpg'),
+('p4444444-4444-4444-4444-444444444444', 'c3333333-3333-3333-3333-333333333333', 'Tomate Italiano Orgânico', 'tomate-italiano-organico', 'Tomates maduros ideais para saladas e molhos.', 9.80, 'kg', 0, true, '/images/tomate.jpg'),
+('p5555555-5555-5555-5555-555555555555', 'c3333333-3333-3333-3333-333333333333', 'Cenoura Orgânica', 'cenoura-organica', 'Cenouras crocantes e selecionadas.', 5.40, 'kg', 0, true, '/images/cenoura.jpg'),
+('p6666666-6666-6666-6666-666666666666', 'c4444444-4444-4444-4444-444444444444', 'Manjericão Fresco', 'manjericao-fresco', 'Erva aromática para seus pratos.', 4.20, 'maço', 0, true, '/images/manjericao.jpg');

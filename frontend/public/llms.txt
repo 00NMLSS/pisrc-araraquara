@@ -1,0 +1,16 @@
+# Quintadinha Online - Anti-AI Scraping Policy
+
+Notice: Automated data collection, web scraping, and content extraction by artificial intelligence crawlers, LLM training bots, and automated agents are strictly prohibited on this website.
+
+Disallowed User Agents:
+- GPTBot
+- ChatGPT-User
+- ClaudeBot
+- Claude-Web
+- AnthropicAI
+- PerplexityBot
+- CCBot
+- Bytespider
+- Google-Extended
+
+All automated requests from these user-agents will be rejected with HTTP 403 Forbidden at the Nginx Ingress Gateway layer.

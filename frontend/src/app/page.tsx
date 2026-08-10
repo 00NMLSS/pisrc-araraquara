@@ -19,78 +19,9 @@ const MOCK_CATEGORIES: Category[] = [
   { id: 'c4444444-4444-4444-4444-444444444444', name: 'Temperos e Ervas', slug: 'temperos' },
 ];
 
-const MOCK_PRODUCTS: Product[] = [
-  {
-    id: 'p1111111-1111-1111-1111-111111111111',
-    name: 'Maçã Fuji Orgânica',
-    slug: 'maca-fuji-organica',
-    description: 'Maçãs doces e suculentas colhidas em produtores certificados.',
-    price: 8.90,
-    unit: 'kg',
-    stockQuantity: 150,
-    isOrganic: true,
-    categoryId: 'c1111111-1111-1111-1111-111111111111',
-  },
-  {
-    id: 'p2222222-2222-2222-2222-222222222222',
-    name: 'Banana Prata Orgânica',
-    slug: 'banana-prata-organica',
-    description: 'Bananas ricas em potássio, cultivadas sem agrotóxicos.',
-    price: 6.50,
-    unit: 'kg',
-    stockQuantity: 200,
-    isOrganic: true,
-    categoryId: 'c1111111-1111-1111-1111-111111111111',
-  },
-  {
-    id: 'p3333333-3333-3333-3333-333333333333',
-    name: 'Alface Crespa Orgânica',
-    slug: 'alface-crespa-organica',
-    description: 'Maço de alface extremamente fresca colhida no mesmo dia.',
-    price: 3.90,
-    unit: 'maço',
-    stockQuantity: 80,
-    isOrganic: true,
-    categoryId: 'c2222222-2222-2222-2222-222222222222',
-  },
-  {
-    id: 'p4444444-4444-4444-4444-444444444444',
-    name: 'Tomate Italiano Orgânico',
-    slug: 'tomate-italiano-organico',
-    description: 'Tomates maduros selecionados, ideais para molhos e saladas.',
-    price: 9.80,
-    unit: 'kg',
-    stockQuantity: 120,
-    isOrganic: true,
-    categoryId: 'c3333333-3333-3333-3333-333333333333',
-  },
-  {
-    id: 'p5555555-5555-5555-5555-555555555555',
-    name: 'Cenoura Orgânica',
-    slug: 'cenoura-organica',
-    description: 'Cenouras crocantes e selecionadas para sua nutrição.',
-    price: 5.40,
-    unit: 'kg',
-    stockQuantity: 100,
-    isOrganic: true,
-    categoryId: 'c3333333-3333-3333-3333-333333333333',
-  },
-  {
-    id: 'p6666666-6666-6666-6666-666666666666',
-    name: 'Manjericão Fresco',
-    slug: 'manjericao-fresco',
-    description: 'Erva aromática fresquíssima para realçar suas receitas.',
-    price: 4.20,
-    unit: 'maço',
-    stockQuantity: 50,
-    isOrganic: true,
-    categoryId: 'c4444444-4444-4444-4444-444444444444',
-  },
-];
-
 export default function Home() {
-  const [products, setProducts] = useState<Product[]>(MOCK_PRODUCTS);
-  const [isLoading, setIsLoading] = useState(false);
+  const [products, setProducts] = useState<Product[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
   const [isOrganicOnly, setIsOrganicOnly] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
@@ -100,24 +31,33 @@ export default function Home() {
 
   const setIsCartOpen = useCartStore((state) => state.setIsOpen);
 
+  const fetchProducts = async () => {
+    setIsLoading(true);
+    try {
+      let url = '/api/products';
+      const params = new URLSearchParams();
+      if (selectedCategory) params.append('categoryId', selectedCategory);
+      if (searchQuery) params.append('search', searchQuery);
+      if (params.toString()) url += `?${params.toString()}`;
+
+      const res = await fetch(url);
+      if (res.ok) {
+        const data = await res.json();
+        let list: Product[] = data;
+        if (isOrganicOnly) {
+          list = list.filter((p) => p.isOrganic);
+        }
+        setProducts(list);
+      }
+    } catch (e) {
+      console.error('Error fetching products from API', e);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   useEffect(() => {
-    let filtered = MOCK_PRODUCTS;
-
-    if (selectedCategory) {
-      filtered = filtered.filter((p) => p.categoryId === selectedCategory);
-    }
-
-    if (isOrganicOnly) {
-      filtered = filtered.filter((p) => p.isOrganic);
-    }
-
-    if (searchQuery.trim()) {
-      filtered = filtered.filter((p) =>
-        p.name.toLowerCase().includes(searchQuery.toLowerCase())
-      );
-    }
-
-    setProducts(filtered);
+    fetchProducts();
   }, [selectedCategory, isOrganicOnly, searchQuery]);
 
   const handleCheckout = () => {
@@ -165,7 +105,12 @@ export default function Home() {
               </section>
 
               <section className="mb-6">
-                <h2 className="text-xl font-bold text-navy mb-4">Catálogo de Produtos</h2>
+                <div className="flex items-center justify-between mb-4">
+                  <h2 className="text-xl font-bold text-navy">Catálogo de Produtos</h2>
+                  <a href="/admin" className="text-xs font-semibold text-sage hover:underline">
+                    Acesso Restrito (Painel Admin)
+                  </a>
+                </div>
                 <CatalogFilters
                   categories={MOCK_CATEGORIES}
                   selectedCategory={selectedCategory}
@@ -215,6 +160,7 @@ export default function Home() {
             <p>Arquitetura de Microsserviços para Alta Concorrência</p>
           </div>
           <div className="flex items-center gap-6">
+            <a href="/admin" className="hover:text-navy font-semibold">Painel Admin</a>
             <a href="/robots.txt" className="hover:text-navy">robots.txt</a>
             <a href="/llms.txt" className="hover:text-navy">llms.txt</a>
             <a href="/sitemap.xml" className="hover:text-navy">sitemap.xml</a>

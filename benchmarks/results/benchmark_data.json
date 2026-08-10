@@ -1,0 +1,108 @@
+{
+  "timestamp": "2026-08-10 19:12:15",
+  "case1": {
+    "concurrency": [
+      10,
+      50,
+      100,
+      250,
+      500
+    ],
+    "redis_cache": {
+      "avg_latency_ms": [
+        2.61,
+        3.07,
+        3.28,
+        4.24,
+        6.6
+      ],
+      "p95_latency_ms": [
+        4.15,
+        4.88,
+        5.1,
+        6.53,
+        9.78
+      ],
+      "throughput_rps": [
+        11676,
+        11055,
+        10241,
+        8276,
+        6387
+      ]
+    },
+    "postgres_db": {
+      "avg_latency_ms": [
+        20.85,
+        28.04,
+        40.7,
+        73.89,
+        126.51
+      ],
+      "p95_latency_ms": [
+        46.82,
+        64.8,
+        95.15,
+        176.8,
+        307.19
+      ],
+      "throughput_rps": [
+        2299,
+        1819,
+        1536,
+        925,
+        636
+      ]
+    }
+  },
+  "case2": {
+    "concurrency_levels": [
+      10,
+      50,
+      100,
+      250,
+      500
+    ],
+    "endpoints": {
+      "Auth JWT Validate (/api/auth/validate)": {
+        "p50": 4.2,
+        "p90": 8.5,
+        "p95": 11.8,
+        "p99": 18.4,
+        "concurrency_stress": [
+          5.1,
+          8.2,
+          12.4,
+          21.0,
+          36.5
+        ]
+      },
+      "Catalog Search (/api/catalog/products)": {
+        "p50": 6.8,
+        "p90": 14.2,
+        "p95": 19.5,
+        "p99": 31.0,
+        "concurrency_stress": [
+          7.5,
+          12.8,
+          19.5,
+          34.2,
+          58.0
+        ]
+      },
+      "Order Checkout (/api/orders/checkout)": {
+        "p50": 42.0,
+        "p90": 88.5,
+        "p95": 115.0,
+        "p99": 185.2,
+        "concurrency_stress": [
+          45.0,
+          78.5,
+          115.0,
+          210.4,
+          385.0
+        ]
+      }
+    }
+  }
+}

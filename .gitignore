@@ -20,3 +20,5 @@ docker/data/
 .env.local
 AGENTS.md
 DESIGN.md
+rascunho.txt
+prompt.md

@@ -1,0 +1,12 @@
+FROM ghcr.io/graalvm/native-image-community:21 AS builder
+WORKDIR /build
+COPY pom.xml .
+COPY src ./src
+RUN ./mvnw -Pnative native:compile -DskipTests || mvn -Pnative native:compile -DskipTests
+
+FROM alpine:3.19
+WORKDIR /app
+RUN apk add --no-libc-compat gcompat
+COPY --from=builder /build/target/order-service /app/order-service
+EXPOSE 8083
+ENTRYPOINT ["/app/order-service"]

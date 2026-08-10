@@ -1,0 +1,19 @@
+server:
+  port: 8082
+
+spring:
+  application:
+    name: catalog-service
+  datasource:
+    url: jdbc:postgresql://${POSTGRES_HOST:pgbouncer}:${POSTGRES_PORT:6432}/${POSTGRES_DB:quintadinha}
+    username: ${POSTGRES_USER:quintadinha}
+    password: ${POSTGRES_PASSWORD:quintadinha_pass}
+    driver-class-name: org.postgresql.Driver
+  jpa:
+    hibernate:
+      ddl-auto: update
+    show-sql: false
+  data:
+    redis:
+      host: ${REDIS_HOST:redis}
+      port: ${REDIS_PORT:6379}

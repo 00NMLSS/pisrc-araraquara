@@ -1,0 +1,24 @@
+{
+  "name": "bff-gateway",
+  "version": "1.0.0",
+  "description": "BFF API Gateway for Quintadinha Online",
+  "main": "dist/index.js",
+  "scripts": {
+    "build": "tsc",
+    "start": "node dist/index.js",
+    "dev": "ts-node-dev --respawn --transpile-only src/index.ts"
+  },
+  "dependencies": {
+    "@fastify/cors": "^8.5.0",
+    "@fastify/swagger": "^8.14.0",
+    "@fastify/swagger-ui": "^2.1.0",
+    "axios": "^1.6.8",
+    "fastify": "^4.26.2",
+    "ioredis": "^5.3.2"
+  },
+  "devDependencies": {
+    "@types/node": "^20.11.24",
+    "ts-node-dev": "^2.0.0",
+    "typescript": "^5.3.3"
+  }
+}

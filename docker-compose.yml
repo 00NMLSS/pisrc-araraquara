@@ -1,0 +1,240 @@
+version: '3.8'
+
+services:
+  nginx:
+    image: nginx:1.25-alpine
+    container_name: quintadinha-nginx
+    ports:
+      - "80:80"
+    volumes:
+      - ./docker/nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+    depends_on:
+      - frontend
+      - bff-gateway
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: quintadinha-frontend
+    ports:
+      - "3000:3000"
+    environment:
+      - NODE_ENV=production
+
+  bff-gateway:
+    build:
+      context: ./services/bff-gateway
+      dockerfile: Dockerfile
+    container_name: quintadinha-bff-gateway
+    ports:
+      - "8080:8080"
+    environment:
+      - PORT=8080
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - AUTH_SERVICE_URL=http://auth-service:8081
+      - CATALOG_SERVICE_URL=http://catalog-service:8082
+      - ORDER_SERVICE_URL=http://order-service:8083
+      - ELASTICSEARCH_URL=http://elasticsearch:9200
+    depends_on:
+      - redis
+      - elasticsearch
+      - auth-service
+      - catalog-service
+      - order-service
+
+  auth-service:
+    build:
+      context: ./services/auth-service
+      dockerfile: Dockerfile.native
+    container_name: quintadinha-auth-service
+    ports:
+      - "8081:8081"
+    environment:
+      - POSTGRES_HOST=pgbouncer
+      - POSTGRES_PORT=6432
+      - POSTGRES_DB=quintadinha
+      - POSTGRES_USER=quintadinha
+      - POSTGRES_PASSWORD=quintadinha_pass
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+    depends_on:
+      - pgbouncer
+      - redis
+
+  catalog-service:
+    build:
+      context: ./services/catalog-service
+      dockerfile: Dockerfile.native
+    container_name: quintadinha-catalog-service
+    ports:
+      - "8082:8082"
+    environment:
+      - POSTGRES_HOST=pgbouncer
+      - POSTGRES_PORT=6432
+      - POSTGRES_DB=quintadinha
+      - POSTGRES_USER=quintadinha
+      - POSTGRES_PASSWORD=quintadinha_pass
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - ELASTICSEARCH_URL=http://elasticsearch:9200
+    depends_on:
+      - pgbouncer
+      - elasticsearch
+      - redis
+
+  order-service:
+    build:
+      context: ./services/order-service
+      dockerfile: Dockerfile.native
+    container_name: quintadinha-order-service
+    ports:
+      - "8083:8083"
+    environment:
+      - POSTGRES_HOST=pgbouncer
+      - POSTGRES_PORT=6432
+      - POSTGRES_DB=quintadinha
+      - POSTGRES_USER=quintadinha
+      - POSTGRES_PASSWORD=quintadinha_pass
+      - RABBITMQ_HOST=rabbitmq
+      - RABBITMQ_PORT=5672
+    depends_on:
+      - pgbouncer
+      - rabbitmq
+
+  postgres-primary:
+    image: postgres:16-alpine
+    container_name: quintadinha-postgres-primary
+    environment:
+      - POSTGRES_DB=quintadinha
+      - POSTGRES_USER=quintadinha
+      - POSTGRES_PASSWORD=quintadinha_pass
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_primary_data:/var/lib/postgresql/data
+      - ./docker/postgres/init.sql:/docker-entrypoint-initdb.d/init.sql
+
+  postgres-replica:
+    image: postgres:16-alpine
+    container_name: quintadinha-postgres-replica
+    environment:
+      - POSTGRES_DB=quintadinha
+      - POSTGRES_USER=quintadinha
+      - POSTGRES_PASSWORD=quintadinha_pass
+    ports:
+      - "5433:5432"
+    volumes:
+      - postgres_replica_data:/var/lib/postgresql/data
+    depends_on:
+      - postgres-primary
+
+  pgbouncer:
+    image: edoburu/pgbouncer:latest
+    container_name: quintadinha-pgbouncer
+    ports:
+      - "6432:6432"
+    volumes:
+      - ./docker/pgbouncer/pgbouncer.ini:/etc/pgbouncer/pgbouncer.ini:ro
+      - ./docker/pgbouncer/userlist.txt:/etc/pgbouncer/userlist.txt:ro
+    depends_on:
+      - postgres-primary
+
+  redis:
+    image: redis:7-alpine
+    container_name: quintadinha-redis
+    command: ["redis-server", "/usr/local/etc/redis/redis.conf"]
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+      - ./docker/redis/redis.conf:/usr/local/etc/redis/redis.conf:ro
+
+  elasticsearch:
+    image: docker.elastic.co/elasticsearch/elasticsearch:8.12.0
+    container_name: quintadinha-elasticsearch
+    environment:
+      - discovery.type=single-node
+      - xpack.security.enabled=false
+      - "ES_JAVA_OPTS=-Xms512m -Xmx512m"
+    ports:
+      - "9200:9200"
+    volumes:
+      - elasticsearch_data:/usr/share/elasticsearch/data
+
+  rabbitmq:
+    image: rabbitmq:3.12-management-alpine
+    container_name: quintadinha-rabbitmq
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+    volumes:
+      - rabbitmq_data:/var/lib/rabbitmq
+      - ./docker/rabbitmq/definitions.json:/etc/rabbitmq/definitions.json:ro
+    environment:
+      - RABBITMQ_SERVER_ADDITIONAL_ERL_ARGS=-rabbitmq_management load_definitions "/etc/rabbitmq/definitions.json"
+
+  otel-collector:
+    image: otel/opentelemetry-collector-contrib:0.95.0
+    container_name: quintadinha-otel-collector
+    command: ["--config=/etc/otel-collector-config.yaml"]
+    volumes:
+      - ./docker/otel/otel-collector-config.yaml:/etc/otel-collector-config.yaml:ro
+    ports:
+      - "4317:4317"
+      - "4318:4318"
+      - "8889:8889"
+
+  loki:
+    image: grafana/loki:2.9.4
+    container_name: quintadinha-loki
+    command: ["-config.file=/etc/loki/local-config.yaml"]
+    volumes:
+      - ./docker/lgtm/loki-config.yaml:/etc/loki/local-config.yaml:ro
+    ports:
+      - "3100:3100"
+
+  tempo:
+    image: grafana/tempo:2.3.1
+    container_name: quintadinha-tempo
+    command: ["-config.file=/etc/tempo.yaml"]
+    volumes:
+      - ./docker/lgtm/tempo-config.yaml:/etc/tempo.yaml:ro
+    ports:
+      - "3200:3200"
+
+  mimir:
+    image: grafana/mimir:2.11.0
+    container_name: quintadinha-mimir
+    command: ["-config.file=/etc/mimir.yaml"]
+    volumes:
+      - ./docker/lgtm/mimir-config.yaml:/etc/mimir.yaml:ro
+    ports:
+      - "9009:9009"
+
+  grafana:
+    image: grafana/grafana:10.3.3
+    container_name: quintadinha-grafana
+    ports:
+      - "3001:3000"
+    volumes:
+      - ./docker/lgtm/grafana/provisioning:/etc/grafana/provisioning:ro
+    environment:
+      - GF_SECURITY_ADMIN_PASSWORD=admin
+
+  wazuh:
+    image: wazuh/wazuh-manager:4.7.2
+    container_name: quintadinha-wazuh
+    ports:
+      - "1514:1514"
+      - "55000:55000"
+    volumes:
+      - ./docker/wazuh/wazuh.conf:/var/ossec/etc/ossec.conf:ro
+
+volumes:
+  postgres_primary_data:
+  postgres_replica_data:
+  redis_data:
+  elasticsearch_data:
+  rabbitmq_data:

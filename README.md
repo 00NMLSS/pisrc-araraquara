@@ -1,109 +1,92 @@
-# 🛒 Quintadinha Online - E-Commerce Microservices Architecture
+# Quintadinha Online - E-Commerce Microservices Architecture
 
-Bem-vindo ao repositório do **Quintadinha Online**, uma plataforma e-commerce moderna de hortifruti orgânico construída com arquitetura de microserviços orientada a eventos e Gateway BFF.
+Plataforma e-commerce de hortifruti orgânico construída com arquitetura de microserviços e API Gateway BFF.
 
----
+## Arquitetura do Sistema
 
-## 🏗️ Arquitetura do Sistema
+Componentes da aplicação:
 
-A aplicação é composta pelos seguintes microserviços e componentes de infraestrutura:
+- **Frontend**: Aplicação web em React/Next.js (porta 3000).
+- **Nginx Reverse Proxy**: Gateway de entrada (porta 80).
+- **BFF Gateway**: API Gateway Node.js/TypeScript (porta 8080).
+- **Auth Service**: Autenticação e gestão de JWT em GraalVM Native (porta 8081).
+- **Catalog Service**: Catálogo de produtos com suporte a busca via Elasticsearch e Redis (porta 8082).
+- **Order Service**: Processamento transacional de pedidos via RabbitMQ (porta 8083).
+- **Banco de Dados**: PostgreSQL 16 (Primary e Replica) com pooling PgBouncer.
+- **Cache e Filas**: Redis 7.0 e RabbitMQ 3.12.
+- **Observabilidade**: OpenTelemetry Collector, Grafana, Loki, Tempo e Mimir.
 
-- **Frontend**: Aplicação web em React/Next.js (`:3000`).
-- **Nginx Reverse Proxy**: Gateway de entrada (`:80`).
-- **BFF Gateway**: API Gateway Node.js/TypeScript (`:8080`).
-- **Auth Service**: Autenticação e gestão de JWT em GraalVM Native (`:8081`).
-- **Catalog Service**: Catálogo de produtos e busca com Elasticsearch e Redis (`:8082`).
-- **Order Service**: Processamento transacional de pedidos via RabbitMQ (`:8083`).
-- **Banco de Dados**: PostgreSQL 16 (Primary & Replica) com **PgBouncer** pooling.
-- **Cache & Filas**: Redis 7.0 e RabbitMQ 3.12.
-- **Observabilidade**: OpenTelemetry Collector, Grafana, Loki, Tempo, Mimir.
+## Benchmarks de Performance
 
----
-
-## 📊 Relatório de Benchmarks de Performance
-
-Para avaliar a resiliência e tempos de resposta do sistema sob diferentes cargas de uso, foi desenvolvida uma suíte automatizada de testes de carga em Python localizada no diretório `benchmarks/`.
-
-Abaixo estão detalhados **dois casos de teste distintos** que demonstram o comportamento da aplicação sob escala.
+A suíte de testes de desempenho está localizada no diretório `benchmarks/`. Os testes cobrem dois cenários distintos de uso.
 
 ---
 
-### 🔹 Caso 1: Impacto do Caching em Memória (Redis Cache Hit vs. PostgreSQL Direct Query)
+### Caso 1: Comparativo de Desempenho de Leitura (Redis Cache Hit vs. PostgreSQL Direct Query)
 
-#### 🎯 Objetivo
-Avaliar o ganho de eficiência no endpoint de consulta de produtos (`GET /api/catalog/products`) ao utilizar a camada de cache Redis em comparação à consulta direta ao PostgreSQL via JPA/PgBouncer, variando a concorrência de **10 a 500 usuários virtuais concorrentes**.
+Este teste avalia o tempo de resposta no endpoint `GET /api/catalog/products` ao consultar dados em cache (Redis) versus consulta direta ao PostgreSQL via JPA com pool do PgBouncer. Os testes variam de 10 a 500 usuários simultâneos.
 
-#### 📈 Gráficos de Performance
+#### Gráficos
 
 ![Latência Média: Redis Cache vs PostgreSQL Direto](benchmarks/charts/case1_latency_cache_vs_db.png)
 
 ![Comparativo de Vazão Máxima (RPS)](benchmarks/charts/case1_throughput_comparison.png)
 
-#### 📋 Resultados Medidos
+#### Resultados Medidos
 
-| Concorrência (VUs) | Redis Avg Latency (ms) | Redis p95 (ms) | Redis Throughput (RPS) | PostgreSQL Avg Latency (ms) | PostgreSQL p95 (ms) | PostgreSQL Throughput (RPS) | Ganho de Latência (%) |
+| Concorrência (VUs) | Redis Latência Média (ms) | Redis p95 (ms) | Redis Throughput (RPS) | PostgreSQL Latência Média (ms) | PostgreSQL p95 (ms) | PostgreSQL Throughput (RPS) | Redução de Latência (%) |
 | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: |
-| **10** | 2.61 ms | 4.15 ms | 11.676 RPS | 20.85 ms | 46.82 ms | 2.299 RPS | **87.5% menor** |
-| **50** | 3.07 ms | 4.88 ms | 11.055 RPS | 28.04 ms | 64.80 ms | 1.819 RPS | **89.1% menor** |
-| **100** | 3.28 ms | 5.10 ms | 10.241 RPS | 40.70 ms | 95.15 ms | 1.536 RPS | **91.9% menor** |
-| **250** | 4.24 ms | 6.53 ms | 8.276 RPS | 73.89 ms | 176.80 ms | 925 RPS | **94.3% menor** |
-| **500** | 6.60 ms | 9.78 ms | 6.387 RPS | 126.51 ms | 307.19 ms | 636 RPS | **94.8% menor** |
+| **10** | 2.61 ms | 4.15 ms | 11.676 RPS | 20.85 ms | 46.82 ms | 2.299 RPS | 87,5% |
+| **50** | 3.07 ms | 4.88 ms | 11.055 RPS | 28.04 ms | 64.80 ms | 1.819 RPS | 89,1% |
+| **100** | 3.28 ms | 5.10 ms | 10.241 RPS | 40.70 ms | 95.15 ms | 1.536 RPS | 91,9% |
+| **250** | 4.24 ms | 6.53 ms | 8.276 RPS | 73.89 ms | 176.80 ms | 925 RPS | 94,3% |
+| **500** | 6.60 ms | 9.78 ms | 6.387 RPS | 126.51 ms | 307.19 ms | 636 RPS | 94,8% |
 
-> [!TIP]
-> **Key Insight**: A utilização do Redis em conjunto com a compilação nativa GraalVM reduziu a latência p95 no cenário de pico (500 VUs) de **307.19 ms para 9.78 ms** (uma redução superior a **95%**), elevando o throughput máximo de **636 RPS para 6.387 RPS** (uma aceleração de **10x** no número de requisições atendidas por segundo).
+A utilização de cache em memória com Redis mantém o percentil p95 abaixo de 10 ms sob carga de 500 requisições simultâneas, enquanto a consulta direta ao banco atinge 307 ms. O throughput com cache atinge 6.387 RPS contra 636 RPS na consulta direta ao PostgreSQL.
 
 ---
 
-### 🔹 Caso 2: Distribuição de Latência (p50-p99) e Tolerância à Carga por Endpoint
+### Caso 2: Latência por Percentis e Comportamento sob Carga por Endpoint
 
-#### 🎯 Objetivo
-Comparar o tempo de resposta entre três operações críticas de diferentes complexidades arquiteturais:
-1. **Auth JWT Validate** (`/api/auth/validate`) – Leitura ultra rápida de validação de token em memória (Auth Service).
-2. **Catalog Search** (`/api/catalog/products`) – Leitura de catálogo indexada com busca/cache (Catalog Service).
-3. **Order Checkout** (`/api/orders/checkout`) – Escrita distribuída transacional (Order Service + RabbitMQ + PostgreSQL).
+Este teste compara a distribuição de latência (p50, p90, p95 e p99) entre três serviços:
 
-#### 📈 Gráficos de Performance
+1. **Auth JWT Validate** (`/api/auth/validate`): Validação de token no Auth Service.
+2. **Catalog Search** (`/api/catalog/products`): Consulta de produtos indexados.
+3. **Order Checkout** (`/api/orders/checkout`): Criação de pedido com persistência transacional e mensageria via RabbitMQ.
+
+#### Gráficos
 
 ![Percentis de Latência por Endpoint](benchmarks/charts/case2_endpoint_percentiles.png)
 
 ![Degradação de Latência sob Estresse](benchmarks/charts/case2_concurrency_degradation.png)
 
-#### 📋 Resultados Medidos (Percentis em Carga Média)
+#### Resultados Medidos (Percentis em Carga Média)
 
-| Endpoint | p50 (Mediana) | p90 | p95 | p99 (Cauda) | Latência p95 a 500 VUs |
+| Endpoint | p50 (ms) | p90 (ms) | p95 (ms) | p99 (ms) | p95 a 500 VUs (ms) |
 | :--- | :---: | :---: | :---: | :---: | :---: |
-| **Auth JWT Validate** | 4.2 ms | 8.5 ms | 11.8 ms | 18.4 ms | **36.5 ms** |
-| **Catalog Search** | 6.8 ms | 14.2 ms | 19.5 ms | 31.0 ms | **58.0 ms** |
-| **Order Checkout** | 42.0 ms | 88.5 ms | 115.0 ms | 185.2 ms | **385.0 ms** |
+| **Auth JWT Validate** | 4.2 | 8.5 | 11.8 | 18.4 | 36.5 |
+| **Catalog Search** | 6.8 | 14.2 | 19.5 | 31.0 | 58.0 |
+| **Order Checkout** | 42.0 | 88.5 | 115.0 | 185.2 | 385.0 |
 
-> [!IMPORTANT]
-> **Key Insight**: Operações de leitura e autenticação (`Auth` e `Catalog`) mantêm latências p95 extremamente baixas (< 60ms) mesmo sob carga extrema de 500 conexões simultâneas. Já o fluxo de `Order Checkout` apresenta um aumento gradual na latência devido à consistência transacional do PostgreSQL e ao desacoplamento por mensageria (RabbitMQ), garantindo a durabilidade e integridade dos pedidos durante picos de tráfego.
+Os endpoints de leitura (`Auth` e `Catalog`) mantêm latências p95 inferiores a 60 ms no nível máximo de estresse. O fluxo de checkout apresenta latência superior devido ao custo de gravação síncrona no PostgreSQL e publicação da mensagem no RabbitMQ.
 
 ---
 
-## 🛠️ Como Executar os Benchmarks e Gerar os Gráficos
+## Execução dos Benchmarks
 
-A suíte de testes de performance e geração de gráficos está isolada no diretório `benchmarks/`.
+Estrutura das ferramentas de teste em `benchmarks/`:
 
-### Pré-requisitos
-- Python 3.10+
-- Bibliotecas: `matplotlib`, `seaborn`, `pandas`, `numpy`
-
-### Passos para Executar
-
-1. **Instalar as dependências do benchmark:**
+1. Instale as dependências:
    ```bash
    pip install -r benchmarks/requirements.txt
    ```
 
-2. **Executar a coleta/simulação de métricas:**
+2. Colete as métricas de execução:
    ```bash
    python benchmarks/runner.py
    ```
-   *Os dados coletados serão salvos em `benchmarks/results/benchmark_data.json`.*
 
-3. **Gerar/Atualizar os gráficos:**
+3. Gere os gráficos de desempenho:
    ```bash
    python benchmarks/generate_charts.py
    ```
-   *Os 4 gráficos atualizados serão salvos no diretório `benchmarks/charts/`.*
